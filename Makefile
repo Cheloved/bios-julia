@@ -7,7 +7,7 @@ QEMU := qemu-system-x86_64
 # Флаги
 ASMFLAGS := -f bin
 CFLAGS := -O0 -nostdlib -ffreestanding -fno-pie -fno-pic \
-		  -mno-red-zone -m16 -march=i386 -mtune=i386
+		  -mno-red-zone -m32 -march=i386 -mtune=i386
 LDFLAGS := -m elf_i386 -T linker.ld -nostdlib --oformat binary
 
 # Исходные файлы

@@ -1,5 +1,5 @@
 OUTPUT_FORMAT("binary")
-OUTPUT_ARCH(i8086)
+OUTPUT_ARCH(i386)
 ENTRY(_start)
 SECTIONS {
     . = 0x7e00;
