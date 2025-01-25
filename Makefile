@@ -37,7 +37,6 @@ stage2.bin: $(STAGE2_OBJS)
 
 # Создание образа диска
 disk.img: boot.bin stage2.bin
-	cat $^ > $@
 	dd if=/dev/zero of=$@ bs=512 count=2880
 	dd if=boot.bin of=$@ conv=notrunc
 	dd if=stage2.bin of=$@ bs=512 seek=1 conv=notrunc
@@ -45,8 +44,8 @@ disk.img: boot.bin stage2.bin
 # Запуск в QEMU
 run: disk.img
 	# $(QEMU) -nographic -drive format=raw,file=$<
-	$(QEMU) -display curses -serial stdio -drive format=raw,file=$<
-	# $(QEMU) -display none -vnc :0 -drive format=raw,file=$<
+	# $(QEMU) -display curses -serial stdio -drive format=raw,file=$<
+	$(QEMU) -display none -vnc :0 -drive format=raw,file=$<
 
 gccs:
 	$(CC) $(CFLAGS) -s -c screen.c -o screen.s
@@ -54,5 +53,8 @@ gccs:
 # Очистка
 clean:
 	rm -f *.o *.bin *.img *.s
+
+kill:
+	pkill qemu-system-x86_64
 
 .PHONY: all run clean

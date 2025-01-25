@@ -88,7 +88,7 @@ gdt_code:
     dw 0xffff       ; Лимит (0-15)
     dw 0x0          ; База (0-15)
     db 0x0          ; База (16-23)
-    db 10011010     ; Present = 1 для используемых сегментов
+    db 0b10011010   ; Present = 1 для используемых сегментов
                     ; Privilege = 00 - "ring"
                     ; Type = 1 - code/data
                     ; Type flags:
@@ -96,7 +96,7 @@ gdt_code:
                     ;   0 - conforming
                     ;   1 - readable
                     ;   0 - accessed (managed by CPU)
-    db 11001111     ; Granularity 1 - limit += 0x1000
+    db 0b11001111   ; Granularity 1 - limit += 0x1000
                     ; 1 - 32bits
                     ; 00 - для AVL(не используется)
                     ; 1111 - лимит (16-23)
@@ -105,7 +105,7 @@ gdt_data:
     dw 0xffff       ; Лимит (0-15)
     dw 0x0          ; База (0-15)
     db 0x0          ; База (16-23)
-    db 10010010     ; Present = 1 для используемых сегментов
+    db 0b10010010   ; Present = 1 для используемых сегментов
                     ; Privilege = 00 - "ring"
                     ; Type = 1 - code/data
                     ; Type flags:
@@ -113,7 +113,7 @@ gdt_data:
                     ;   0 - conforming
                     ;   1 - readable
                     ;   0 - accessed (managed by CPU)
-    db 11001111     ; Granularity 1 - limit += 0x1000
+    db 0b11001111   ; Granularity 1 - limit += 0x1000
                     ; 1 - 32bits
                     ; 00 - для AVL(не используется)
                     ; 1111 - лимит (16-23)
@@ -144,10 +144,10 @@ protected_mode:
     mov ah, 0x0f
     mov [0xb8000], ax
 
-    jmp $
+    ;jmp $
 
     ; Переход ко второму этапу
-    ;jmp 0x7e00
+    jmp 0x7e00
 
 
 ; Заполнение до 512 байт
