@@ -39,6 +39,16 @@ start:
     mov ax, 0x2401
     int 0x15
 
+    ; Ожидание подтверждения
+    mov si, confirm_msg
+    call print_string
+    mov ah, 0x00    ; Чтение скан-кода с ожиданием
+    int 0x16
+
+    ; Установка видео режима 640х480, 16 цветов
+    mov ax, 0x0012
+    int 0x10
+
     ; Загрузка GDT
     cli
     lgdt [gdt_descriptor]
@@ -75,6 +85,7 @@ print_string:
 ; Данные
 init_msg db "MBR Bootloader loaded", 0xD, 0xA, 0
 disk_ok_msg db "Disk loaded", 0xD, 0xA, 0
+confirm_msg db "Press any key to continue...", 0xD, 0xA, 0
 error_msg db "Disk error!", 0
 
 ; Определение GDT
@@ -137,9 +148,9 @@ protected_mode:
     ; Настройка 32-битного стека
     mov esp, 0x7c00
 
-    mov al, 'Z'
-    mov ah, 0x0f
-    mov [0xb8000], ax
+    ;mov al, 'Z'
+    ;mov ah, 0x0f
+    ;mov [0xb8000], ax
 
     ; Переход ко второму этапу
     jmp 0x7e00
