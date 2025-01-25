@@ -75,9 +75,6 @@ print_string:
 ; Данные
 init_msg db "MBR Bootloader loaded", 0xD, 0xA, 0
 disk_ok_msg db "Disk loaded", 0xD, 0xA, 0
-a20_ok_msg db "A20 enabled", 0xD, 0xA, 0
-gdt_ok_msg db "GDT loaded", 0xD, 0xA, 0
-before_protected_msg db "Entering protected mode", 0xD, 0xA, 0
 error_msg db "Disk error!", 0
 
 ; Определение GDT
@@ -140,11 +137,9 @@ protected_mode:
     ; Настройка 32-битного стека
     mov esp, 0x7c00
 
-    mov al, 'A'
+    mov al, 'Z'
     mov ah, 0x0f
     mov [0xb8000], ax
-
-    ;jmp $
 
     ; Переход ко второму этапу
     jmp 0x7e00
