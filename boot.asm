@@ -22,7 +22,7 @@ start:
 	; Чтение второго этапа с диска
     cli
     mov ah, 0x02        ; Функция чтения секторов
-    mov al, 0x10        ; Количество секторов для чтения
+    mov al, 0x4         ; Количество секторов для чтения
     mov ch, 0           ; Цилиндр
     mov dh, 0           ; Головка
     mov cl, 2           ; Сектор (MBR - 1, второй этап с 2)
@@ -35,42 +35,23 @@ start:
     mov si, disk_ok_msg
     call print_string
 
-    ; Активация линии А20
-    mov ax, 0x2401
-    int 0x15
-
-    ; Ожидание подтверждения
-    mov si, confirm_msg
+    mov si, before_stage2_msg
     call print_string
-    mov ah, 0x00    ; Чтение скан-кода с ожиданием
-    int 0x16
 
-    ; Установка видео режима 640х480, 16 цветов
-    mov ax, 0x0012
-    int 0x10
+    jmp 0x7e00
 
-    ; Загрузка GDT
-    cli
-    lgdt [gdt_descriptor]
-
-    ; Включение защищенного режима
-    mov eax, cr0
-    or eax, 0x1
-    mov cr0, eax
-
-    ; Переход в 32-битный режим и обновление CS
-    jmp CODE_SEG:protected_mode
 
 disk_error:
     mov si, error_msg
     call print_string
+    cli
     hlt
 
 print_string:
     pusha
 .loop:
-    lodsb       ; Загрузка символа из SI в AL
-    or al, al   ; Проверка на конец строки
+    lodsb           ; Загрузка символа из SI в AL
+    or al, al       ; Проверка на конец строки
     jz .done
 
     mov ah, 0x0e    ; Функция вывода символа
@@ -84,77 +65,9 @@ print_string:
 
 ; Данные
 init_msg db "MBR Bootloader loaded", 0xD, 0xA, 0
-disk_ok_msg db "Disk loaded", 0xD, 0xA, 0
-confirm_msg db "Press any key to continue...", 0xD, 0xA, 0
-error_msg db "Disk error!", 0
-
-; Определение GDT
-gdt_start:
-    dd 0x0
-    dd 0x0
-gdt_code:
-    dw 0xffff       ; Лимит (0-15)
-    dw 0x0          ; База (0-15)
-    db 0x0          ; База (16-23)
-    db 0b10011010   ; Present = 1 для используемых сегментов
-                    ; Privilege = 00 - "ring"
-                    ; Type = 1 - code/data
-                    ; Type flags:
-                    ;   1 - code
-                    ;   0 - conforming
-                    ;   1 - readable
-                    ;   0 - accessed (managed by CPU)
-    db 0b11001111   ; Granularity 1 - limit += 0x1000
-                    ; 1 - 32bits
-                    ; 00 - для AVL(не используется)
-                    ; 1111 - лимит (16-23)
-    db 0            ; База (24-31)
-gdt_data:
-    dw 0xffff       ; Лимит (0-15)
-    dw 0x0          ; База (0-15)
-    db 0x0          ; База (16-23)
-    db 0b10010010   ; Present = 1 для используемых сегментов
-                    ; Privilege = 00 - "ring"
-                    ; Type = 1 - code/data
-                    ; Type flags:
-                    ;   0 - data
-                    ;   0 - conforming
-                    ;   1 - readable
-                    ;   0 - accessed (managed by CPU)
-    db 0b11001111   ; Granularity 1 - limit += 0x1000
-                    ; 1 - 32bits
-                    ; 00 - для AVL(не используется)
-                    ; 1111 - лимит (16-23)
-    db 0            ; База (24-31)
-gdt_end:
-
-gdt_descriptor:
-    dw gdt_end - gdt_start - 1  ; Размер
-    dd gdt_start                ; Начало
-
-CODE_SEG equ gdt_code - gdt_start   ; Offset код-дескриптора относительно начала
-DATA_SEG equ gdt_data - gdt_start
-
-[bits 32]
-protected_mode:
-    ; Обновление сегментных регистров
-    mov ax, DATA_SEG
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    ; Настройка 32-битного стека
-    mov esp, 0x7c00
-
-    ;mov al, 'Z'
-    ;mov ah, 0x0f
-    ;mov [0xb8000], ax
-
-    ; Переход ко второму этапу
-    jmp 0x7e00
-
+disk_ok_msg db "Stage2 loaded from disk", 0xD, 0xA, 0
+before_stage2_msg db "Entering stage 2", 0xD, 0xA, 0
+error_msg db "Disk error on loading stage2!", 0xD, 0xA, 0
 
 ; Заполнение до 512 байт
 times 510 - ($ - $$) db 0
