@@ -99,8 +99,7 @@ mode_loop:
 
     ; Сохранение параметров VBE
     mov eax, [vbe_mode_info+0x28]   ; Адрес начала буфера
-    ;mov [framebuffer], eax          
-    mov [0x85fc], eax          
+    mov [framebuffer], eax          
 
     mov ax, [vbe_mode_info+0x12]    ; Ширина экрана
     mov [screen_width], ax
@@ -227,10 +226,15 @@ fb_msg               db "Frame buffer address:", 0xD, 0xA, 0
 vbe_info:       times 512 db 0
 vbe_mode_info:  times 256 db 0
 
-framebuffer     equ 0x85FC
-screen_width    equ 0x85FA
-screen_height   equ 0x85F9
-bpp             equ 0x85F8
+framebuffer     dd 0
+screen_width    dw 0
+screen_height   dw 0
+bpp             db 0
+
+; framebuffer     equ 0x85FC
+; screen_width    equ 0x85FA
+; screen_height   equ 0x85F9
+; bpp             equ 0x85F8
 
 ; Определение GDT
 gdt_start:
@@ -292,15 +296,11 @@ protected_mode:
     ; Настройка 32-битного стека
     mov esp, 0x7c00
 
-    ;mov al, 'Z'
-    ;mov ah, 0x0f
-    ;mov [0xb8000], ax
-
     ; Проверка адреса фреймбуфера
     mov edi, [framebuffer]
 
     ; Установка цвета
-    mov eax, 0x000000ff     ; Зеленый (ARGB)
+    mov eax, 0x00ff0000     ; Красный (ARGB)
 
     ; Расчет общего кол-ва пикселей
     movzx ecx, word [screen_width]
@@ -311,10 +311,15 @@ protected_mode:
     cld
     rep stosd
 
-    ;jmp $
+    ; Передача информации о VBE режме в ядро
+    ; через регистры
+    mov eax, [framebuffer]
+    mov bx,  [screen_width]
+    mov cx,  [screen_height]
+    mov dl,  [bpp]
 
     ; Переход в ядро
     jmp 0x8600
 
 ; Заполнение до 2048 байт (4 сектора)
-;times 2048 - ($ - $$) db 0
+times 2048 - ($ - $$) db 0

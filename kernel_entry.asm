@@ -1,22 +1,34 @@
 [bits 32]
 
 global _start
+
+extern fb
+extern width
+extern height
+extern bpp
+
 extern main
 
 _start:
     ; Настройка стека
     mov esp, 0x7c00
 
+    ; Получение и запись информации о VBE
+    mov [fb],     eax
+    mov [width],  bx
+    mov [height], cx
+    mov [bpp],    dl
+
     ; Проверка адреса фреймбуфера
-    mov edi, [framebuffer]
+    mov edi, [fb]
 
     ; Установка цвета
-    mov eax, 0x00ff0000
+    mov eax, 0x0000ff00     ; Зеленый (ARGB)
     mov [edi], eax
 
     ; Расчет общего кол-ва пикселей
-    movzx ecx, word [screen_width]
-    movzx ebx, word [screen_height]
+    movzx ecx, word [width]
+    movzx ebx, word [height]
     imul ecx, ebx
 
     ; Заливка фреймбуфера
@@ -28,7 +40,7 @@ _start:
 
     jmp $
 
-framebuffer     equ 0x85FC
-screen_width    equ 0x85FA
-screen_height   equ 0x85F9
-bpp             equ 0x85F8
+; framebuffer     equ 0x85FC
+; screen_width    equ 0x85FA
+; screen_height   equ 0x85F9
+; bpp             equ 0x85F8
