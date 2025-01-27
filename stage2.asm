@@ -60,7 +60,8 @@ mode_loop:
     cmp eax, 0
     je mode_loop     ; Пропустить, если адрес нулевой
 
-    cmp word [vbe_mode_info+0x12], 0d1920   ; Ширина = 1024 пикселя
+    ; cmp word [vbe_mode_info+0x12], 0d1920   ; Ширина = 1024 пикселя
+    cmp word [vbe_mode_info+0x12], 0d640   ; Ширина = 1024 пикселя
     jne mode_loop
 
     cmp byte [vbe_mode_info+0x19], 0d32     ; 32 бита на пиксель

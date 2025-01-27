@@ -24,7 +24,6 @@ _start:
 
     ; Установка цвета
     mov eax, 0x0000ff00     ; Зеленый (ARGB)
-    mov [edi], eax
 
     ; Расчет общего кол-ва пикселей
     movzx ecx, word [width]
