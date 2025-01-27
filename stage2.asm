@@ -6,6 +6,7 @@ stage2:
     xor ax, ax
     mov ds, ax
     mov es, ax
+    mov fs, ax
 
     ; Настройка стека
     mov ss, ax
@@ -15,13 +16,107 @@ stage2:
     mov si, init_msg 
     call print_string
 
+    ; === Получение информации о VBE === ;
+    ; Загрузка информации в vbe_info
+    mov ax, 0x4F00
+    mov di, vbe_info
+    int 0x10
+
+    ; Проверка на ошибку
+    cmp ax, 0x004F
+    jne vbe_read_error
+
+     ;Вывод смещения и сегмента
+    ;mov si, vbe_seg_msg
+    ;call print_string
+    ;mov dx, [vbe_info+0x0e]
+    ;call print_hex_16
+    ;mov dx, [vbe_info+0x10]
+    ;call print_hex_16
+
+    ; Поиск подходящего режима
+    mov si, [vbe_info+0x10]     ; Сегмент списка
+    mov fs, si             
+    mov si, [vbe_info+0x0E]     ; Смещение списка
+
+mode_loop:
+    mov cx, [fs:si]     ; Чтение номера режима
+    cmp cx, 0xFFFF      ; 0xFFFF обозначает конец списка режимов
+    je loop_not_found
+    add si, 2           ; Переход к следующему режиму для след итерации
+
+    ; Получение информации о режиме в vbe_mode_info
+    mov ax, 0x4F01
+    mov di, vbe_mode_info
+    int 0x10
+    cmp ax, 0x004F      ; Неподдерживаемый режим
+    jne mode_loop
+
+    ; Проверка атрибутов режима
+    test word [vbe_mode_info+0x00], 0x80    ; Если 1, использует линейный буфер
+    jz mode_loop                            ; Если нет, переход к следующему режиму
+
+    mov eax, [vbe_mode_info+0x28]
+    cmp eax, 0
+    je mode_loop     ; Пропустить, если адрес нулевой
+
+    cmp word [vbe_mode_info+0x12], 0d1024   ; Ширина = 1024 пикселя
+    jne mode_loop
+
+    cmp byte [vbe_mode_info+0x19], 0d32     ; 32 бита на пиксель
+    jne mode_loop
+
+    ; Если найден, установить режим
+    ;mov si, mode_found_msg
+    ;call print_string
+    ;mov dx, cx          ; Вывод номера режима
+    ;call print_hex_16
+
+    ;mov si, fb_msg
+    ;call print_string
+    ;mov dx, [vbe_mode_info+0x28]  ; Вывод начала буффера
+    ;call print_hex_16
+    ;mov dx, [vbe_mode_info+0x2A]  ; Вывод начала буффера
+    ;call print_hex_16
+    ;
+    ;mov dx, [vbe_mode_info+0x12]  ; Ширина
+    ;call print_hex_16
+    ;mov dx, [vbe_mode_info+0x14]  ; Высота
+    ;call print_hex_16
+    ;xor dx, dx
+    ;mov dl, [vbe_mode_info+0x19]  ; Высота
+    ;call print_hex_16
+
+    ;jmp $
+
+    mov ax, 0x4F02
+    mov bx, cx
+    or bx, 0x4000   ; Использовать линейный буфер
+    int 0x10
+
+    cmp ax, 0x004F
+    jne vbe_set_error
+
+    ; Сохранение параметров VBE
+    mov eax, [vbe_mode_info+0x28]   ; Адрес начала буфера
+    mov [framebuffer], eax          
+
+    mov ax, [vbe_mode_info+0x12]    ; Ширина экрана
+    mov [screen_width], ax
+
+    mov ax, [vbe_mode_info+0x14]    ; Высота экрана
+    mov [screen_height], ax
+
+    mov al, [vbe_mode_info+0x19]    ; Бит на пиксель
+    mov [bpp], al
+
 	; Чтение ядра с диска
     cli
     mov ah, 0x02        ; Функция чтения секторов
     mov al, 0x10        ; Количество секторов для чтения
     mov ch, 0           ; Цилиндр
     mov dh, 0           ; Головка
-    mov cl, 5           ; Сектор (MBR - 1, второй этап с 2)
+    mov cl, 6           ; Сектор (MBR - 1, второй этап с 2)
     mov bx, 0x8600      ; Адрес, куда грузить ядро
     int 0x13
     sti
@@ -70,10 +165,70 @@ print_string:
     popa
     ret
 
+; Функция вывода числа в HEX (16-бит)
+; Вход: DX = число для вывода
+print_hex_16:
+    pusha               ; Сохраняем все регистры
+    xor bx, bx
+    mov cx, 4           ; 4 ниббла
+.next_nibble:
+    rol dx, 4           ; Циклический сдвиг влево на 4 бита (чтобы обрабатывать старшие нибблы первыми)
+    mov ax, dx          ; Копируем AX в DX
+    and ax, 0x000F      ; Изолируем младшие 4 бита (текущий ниббл)
+    add al, '0'         ; Преобразуем в ASCII (0-9)
+    cmp al, '9'         ; Если значение > 9...
+    jbe .print_char     
+    add al, 7           ; ...добавляем 7 для букв A-F (ASCII 'A' - '9' = 8, но 0x0A -> 'A')
+.print_char:
+    mov ah, 0x0E        ; Функция BIOS: вывод символа
+    mov bh, 0x00        ; Страница 0
+    int 0x10            ; Выводим символ
+    loop .next_nibble   ; Переходим к следующему нибблу
+    mov ah, 0x0E        ; \r
+    mov al, 0x0D
+    mov bh, 0x00
+    int 0x10
+    mov ah, 0x0E        ; \n
+    mov al, 0x0A
+    mov bh, 0x00
+    int 0x10
+    popa                ; Восстанавливаем регистры
+    ret
+
+vbe_read_error:
+    mov si, vbe_read_error_msg
+    call print_string
+    cli
+    hlt
+vbe_set_error:
+    mov si, vbe_set_error_msg
+    call print_string
+    cli
+    hlt
+loop_not_found:
+    mov si, loop_not_found_msg
+    call print_string
+    cli
+    hlt
+
 ; Данные
-init_msg db "Stage 2 entered", 0xD, 0xA, 0
-disk_ok_msg db "Kernel loaded from disk", 0xD, 0xA, 0
-error_msg db "Disk error on kernel loading!", 0xD, 0xA, 0
+init_msg             db "Stage 2 entered", 0xD, 0xA, 0
+disk_ok_msg          db "Kernel loaded from disk", 0xD, 0xA, 0
+error_msg            db "Disk error on kernel loading!", 0xD, 0xA, 0
+vbe_seg_msg          db "VBE offset and sector:", 0xD, 0xA, 0
+vbe_read_error_msg   db "VBE not supported", 0xD, 0xA, 0
+vbe_set_error_msg    db "Error setting VBE mode", 0xD, 0xA, 0
+loop_not_found_msg   db "Video mode not found", 0xD, 0xA, 0
+mode_found_msg       db "Mode found, it's number:", 0xD, 0xA, 0
+fb_msg               db "Frame buffer address:", 0xD, 0xA, 0
+
+; Структуры для VBE
+vbe_info:       times 512 db 0
+vbe_mode_info:  times 256 db 0
+framebuffer     dd 0
+screen_width    dw 0
+screen_height   dw 0
+bpp             db 0
 
 ; Определение GDT
 gdt_start:
@@ -135,12 +290,29 @@ protected_mode:
     ; Настройка 32-битного стека
     mov esp, 0x7c00
 
-    mov al, 'Z'
-    mov ah, 0x0f
-    mov [0xb8000], ax
+    ;mov al, 'Z'
+    ;mov ah, 0x0f
+    ;mov [0xb8000], ax
+
+    ; Проверка адреса фреймбуфера
+    mov edi, [framebuffer]
+
+    ; Установка цвета
+    mov eax, 0x000000ff     ; Зеленый (ARGB)
+
+    ; Расчет общего кол-ва пикселей
+    movzx ecx, word [screen_width]
+    movzx ebx, word [screen_height]
+    imul ecx, ebx
+
+    ; Заливка фреймбуфера
+    cld
+    rep stosd
+
+    jmp $
 
     ; Переход в ядро
-    jmp 0x8600
+    ;jmp 0x8600
 
 ; Заполнение до 2048 байт (4 сектора)
-times 2048 - ($ - $$) db 0
+;times 2048 - ($ - $$) db 0
