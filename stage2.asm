@@ -117,7 +117,7 @@ mode_loop:
     mov al, 0x10        ; Количество секторов для чтения
     mov ch, 0           ; Цилиндр
     mov dh, 0           ; Головка
-    mov cl, 6           ; Сектор (MBR - 1, второй этап с 2)
+    mov cl, 6           ; Сектор (1 - boot, 2-5 stage2, 6 - kernel)
     mov bx, 0x8600      ; Адрес, куда грузить ядро
     int 0x13
     sti
