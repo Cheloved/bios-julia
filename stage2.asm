@@ -60,7 +60,7 @@ mode_loop:
     cmp eax, 0
     je mode_loop     ; Пропустить, если адрес нулевой
 
-    cmp word [vbe_mode_info+0x12], 0d1024   ; Ширина = 1024 пикселя
+    cmp word [vbe_mode_info+0x12], 0d1920   ; Ширина = 1024 пикселя
     jne mode_loop
 
     cmp byte [vbe_mode_info+0x19], 0d32     ; 32 бита на пиксель
@@ -99,7 +99,8 @@ mode_loop:
 
     ; Сохранение параметров VBE
     mov eax, [vbe_mode_info+0x28]   ; Адрес начала буфера
-    mov [framebuffer], eax          
+    ;mov [framebuffer], eax          
+    mov [0x85fc], eax          
 
     mov ax, [vbe_mode_info+0x12]    ; Ширина экрана
     mov [screen_width], ax
@@ -225,10 +226,11 @@ fb_msg               db "Frame buffer address:", 0xD, 0xA, 0
 ; Структуры для VBE
 vbe_info:       times 512 db 0
 vbe_mode_info:  times 256 db 0
-framebuffer     dd 0
-screen_width    dw 0
-screen_height   dw 0
-bpp             db 0
+
+framebuffer     equ 0x85FC
+screen_width    equ 0x85FA
+screen_height   equ 0x85F9
+bpp             equ 0x85F8
 
 ; Определение GDT
 gdt_start:
@@ -309,10 +311,10 @@ protected_mode:
     cld
     rep stosd
 
-    jmp $
+    ;jmp $
 
     ; Переход в ядро
-    ;jmp 0x8600
+    jmp 0x8600
 
 ; Заполнение до 2048 байт (4 сектора)
 ;times 2048 - ($ - $$) db 0
